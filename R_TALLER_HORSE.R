@@ -123,8 +123,21 @@ pm <- ggpairs(
 pm
 #####
 library(naivebayes)
+library(e1071)
+library(caret)
 
-nrow(datao)
-num_reg_entrenamiento<-as.integer(0.75*nrow(datao))
-num_reg_entrenamiento
-data_train<- sample(nrow(datao), num_reg_entrenamiento)
+datosCat<- data[,c(1,7:15,17:18,21,24:25,23)]
+#convertir datos numericos en caracteres
+for (x in 1:16) {
+  datosCat[,x] <- as.factor(datosCat[,x])
+}
+
+set.seed(2020)
+t.ids <- createDataPartition(datosCat$X23..resultado,p=0.69,list=F)
+mod <- naiveBayes(X23..resultado~.,data = datosCat[t.ids,])
+mod
+
+pred<-predict(mod,datosCat[-t.ids,])
+tab<- table(datosCat[-t.ids,]$X23..resultado,pred, dnn = c("ACTUAL","PREDICHA"))
+confusionMatrix(tab)
+
