@@ -6,6 +6,9 @@ library(tidyverse)
 library(GGally)
 library(hrbrthemes)
 library(naivebayes)
+library(naivebayes)
+library(e1071)
+library(caret)
 
 chance_med<-function(atri){
   clear_dat<-na.omit(atri)
@@ -122,22 +125,81 @@ pm <- ggpairs(
 )
 pm
 #####
-library(naivebayes)
-library(e1071)
-library(caret)
+
 
 datosCat<- data[,c(1,7:15,17:18,21,24:25,23)]
 #convertir datos numericos en caracteres
 for (x in 1:16) {
   datosCat[,x] <- as.factor(datosCat[,x])
 }
+  set.seed(1987)
+  t.ids <- createDataPartition(datosCat$X23..resultado,p=0.69,list=F)
+  mod <- naiveBayes(X23..resultado~.,data = datosCat[t.ids,])
+  
+  pred<-predict(mod,datosCat[-t.ids,])
+  tab<- table(datosCat[-t.ids,]$X23..resultado,pred, dnn = c("ACTUAL","PREDICHA"))
+  confusionMatrix(tab)
 
-set.seed(2020)
-t.ids <- createDataPartition(datosCat$X23..resultado,p=0.69,list=F)
-mod <- naiveBayes(X23..resultado~.,data = datosCat[t.ids,])
-mod
 
-pred<-predict(mod,datosCat[-t.ids,])
-tab<- table(datosCat[-t.ids,]$X23..resultado,pred, dnn = c("ACTUAL","PREDICHA"))
+
+##########con todos los datos##########################
+#######################################################
+all_data<- data[,c(1,7:15,17:18,21,24:25,4:6,16,19:20,22,23)]
+#convertir datos numericos en caracteres
+for (x in 1:23) {
+  all_data[,x] <- as.factor(all_data[,x])
+}
+
+set.seed(1598)
+t.ids <- createDataPartition(all_data$X23..resultado,p=0.69,list=F)
+mod <- naiveBayes(X23..resultado~.,data = all_data[t.ids,])
+
+pred<-predict(mod,all_data[-t.ids,])
+tab<- table(all_data[-t.ids,]$X23..resultado,pred, dnn = c("ACTUAL","PREDICHA"))
 confusionMatrix(tab)
 
+####################################################
+#####arbol de clasificacion#########################
+library(rpart)
+library(rpart.plot)
+library(caret)
+set.seed(8476)
+dat_Tree<- data[,c(1,7:15,17:18,21,24:25,4:6,16,19:20,22,23)]
+tr.id<-createDataPartition(dat_Tree$X23..resultado,p=0.58,list = F)
+
+Tremod<-rpart(X23..resultado~., method = "class",data = dat_Tree[tr.id,])
+
+#print(Tremod)
+rpart.plot(Tremod,extra = 100)
+#printcp(Tremod)
+plotcp(Tremod)
+
+predT<-predict(Tremod,newdata = dat_Tree[-tr.id,],type = "class")
+tab<- table(dat_Tree[-tr.id,]$X23..resultado,predT, dnn = c("ACTUAL","PREDICHA"))
+confusionMatrix(tab)
+
+
+
+###otro arbol
+library(C50)
+library(tidyverse)
+set.seed(102)
+dat_Tree_C<- data[,c(1,7:15,17:18,21,24:25,4:6,16,19:20,22,23)]
+for (x in 1:23) {
+  dat_Tree_C[,x] <- as.factor(dat_Tree_C[,x])
+}
+
+tr.id<-createDataPartition(dat_Tree_C$X23..resultado,p=0.58,list = F)
+Tremod<-C5.0(X23..resultado~.,data = dat_Tree_C[tr.id,])
+
+#print(Tremod)
+#rpart.plot(Tremod,extra = 100)
+#printcp(Tremod)
+#plotcp(Tremod)
+summary(Tremod)
+plot(Tremod)
+
+predT<-predict(Tremod,newdata = dat_Tree_C[-tr.id,])
+tab<- table(dat_Tree_C[-tr.id,]$X23..resultado,predT, dnn = c("ACTUAL","PREDICHA"))
+confusionMatrix(tab)
+###
