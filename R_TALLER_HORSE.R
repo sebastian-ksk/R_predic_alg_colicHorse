@@ -9,6 +9,11 @@ library(naivebayes)
 library(naivebayes)
 library(e1071)
 library(caret)
+library(C50)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(caret)
 
 chance_med<-function(atri){
   clear_dat<-na.omit(atri)
@@ -35,18 +40,14 @@ data <- read.csv("D:/SEMESTRES/semestre-2020_1/ELECTIVA_II_2020/R_/COLIC_HORSE_C
 data$X4..temp_rectal<- ifelse(is.na(data$X4..temp_rectal),chance_med(data$X4..temp_rectal),data$X4..temp_rectal)
 data$X5..pulso <- ifelse(is.na(data$X5..pulso),chance_med(data$X5..pulso),data$X5..pulso)
 data$X6..tasa_respiracion <-  ifelse(is.na(data$X6..tasa_respiracion),chance_med(data$X6..tasa_respiracion),data$X6..tasa_respiracion)
-
 data$X16..ph_reflujo_nasogastrico<-ifelse(is.na(data$X16..ph_reflujo_nasogastrico),chance_med(data$X16..ph_reflujo_nasogastrico),data$X16..ph_reflujo_nasogastrico)
-
 data$X19..volumen_celular<- ifelse(is.na(data$X19..volumen_celular),chance_med(data$X19..volumen_celular),data$X19..volumen_celular)
 data$X20..proteina_total<- ifelse(is.na(data$X20..proteina_total),chance_med(data$X20..proteina_total),data$X20..proteina_total)
-
 data$X22..proteina_toal_abdominal <- ifelse(is.na(data$X22..proteina_toal_abdominal),chance_med(data$X22..proteina_toal_abdominal),data$X22..proteina_toal_abdominal)
 
 
 #change var categoricas
 data$X1..cirugía <- rand.impute(data$X1..cirugía)
-
 data$X7..temp_extremidades <- rand.impute(data$X7..temp_extremidades)
 data$X8..pulso_periferico <- rand.impute(data$X8..pulso_periferico)
 data$X9..membrana_mucosa <- rand.impute(data$X9..membrana_mucosa)
@@ -56,20 +57,15 @@ data$X12..movimiento_peristaltico<- rand.impute(data$X12..movimiento_peristaltic
 data$X13..distension_abdominal<-rand.impute(data$X13..distension_abdominal)
 data$X14..tubo_nasogastrico <- rand.impute(data$X14..tubo_nasogastrico)
 data$X15..reflujo_nasogastrico<- rand.impute(data$X15..reflujo_nasogastrico)
-
 data$X17..examen_rectal_heces <- rand.impute(data$X17..examen_rectal_heces)
 data$X18..abdomen <- rand.impute(data$X18..abdomen)
-
 data$X21..aspecto_fluido_abdominal <- rand.impute(data$X21..aspecto_fluido_abdominal)
-
 data$X24..lesion_quirurgica <- rand.impute(data$X24..lesion_quirurgica)
 data$X25..presencia_patologia <- rand.impute(data$X25..presencia_patologia)
-
-
 #remplazo de etiquetas
 data$X23..resultado <- rand.impute(data$X23..resultado)
-data$X23..resultado <- ifelse(data$X23..resultado==1,"live","die")
 
+data$X23..resultado <- ifelse(data$X23..resultado==1,1,2)
 
 
 #data <- data[,-3] #elimar columna de hospitales
@@ -77,13 +73,28 @@ data$X23..resultado <- ifelse(data$X23..resultado==1,"live","die")
 datao<- data[,c(1,7:15,17:18,21,24:25,4:6,16,19:20,22,23)]
 
 ## ANALISIS EXPLORATORIO
-a=1
-for(i in 1:23) {
-  #ggplot(data=datao)+geom_histogram(mapping = aes(x=datao[,i]),binwidth = 0.5)
-  print( EDA(datao[,i]))
-  #  a=a+1
-   # Sys.sleep(0.5)
-}
+
+G<-as.character()
+
+# for(i in 1:22) {
+#  # print(i)
+#   ggplot(data=datao,mapping = aes(x = datao$X23..resultado,y = datao[,i])) +
+#     geom_point(na.rm = TRUE)
+#     ggsave(path = "figs",
+#        "imagen.png"
+#       # plot = last_plot(),
+#       # device = NULL,
+#       # path = NULL,
+#       # scale = 1,
+#       # width = NA,
+#       # height = NA,
+#       # units = c("in", "cm", "mm"),
+#       # dpi = 300,
+#       # limitsize = TRUE,
+#   )
+#  # Est<-EDA(datao[,i])
+#     dev.off()
+# }
 
 ggparcoord(datao,columns = c(18,19,20,21,22,23),
            groupColumn = 23,
@@ -127,13 +138,20 @@ pm
 #####
 
 
+#########################################################
+#######bayes##########################
+
+data$X23..resultado <- ifelse(data$X23..resultado==1,"live","die")
+datao<- data[,c(1,7:15,17:18,21,24:25,4:6,16,19:20,22,23)]
+
+
 datosCat<- data[,c(1,7:15,17:18,21,24:25,23)]
 #convertir datos numericos en caracteres
 for (x in 1:16) {
   datosCat[,x] <- as.factor(datosCat[,x])
 }
-  set.seed(1987)
-  t.ids <- createDataPartition(datosCat$X23..resultado,p=0.69,list=F)
+  set.seed(101)
+  t.ids <- createDataPartition(datosCat$X23..resultado,p=0.80,list=F)
   mod <- naiveBayes(X23..resultado~.,data = datosCat[t.ids,])
   
   pred<-predict(mod,datosCat[-t.ids,])
@@ -150,8 +168,8 @@ for (x in 1:23) {
   all_data[,x] <- as.factor(all_data[,x])
 }
 
-set.seed(1598)
-t.ids <- createDataPartition(all_data$X23..resultado,p=0.69,list=F)
+set.seed(101)
+t.ids <- createDataPartition(all_data$X23..resultado,p=0.8,list=F)
 mod <- naiveBayes(X23..resultado~.,data = all_data[t.ids,])
 
 pred<-predict(mod,all_data[-t.ids,])
@@ -160,12 +178,10 @@ confusionMatrix(tab)
 
 ####################################################
 #####arbol de clasificacion#########################
-library(rpart)
-library(rpart.plot)
-library(caret)
-set.seed(8476)
+
+set.seed(101)
 dat_Tree<- data[,c(1,7:15,17:18,21,24:25,4:6,16,19:20,22,23)]
-tr.id<-createDataPartition(dat_Tree$X23..resultado,p=0.58,list = F)
+tr.id<-createDataPartition(dat_Tree$X23..resultado,p=0.80,list = F)
 
 Tremod<-rpart(X23..resultado~., method = "class",data = dat_Tree[tr.id,])
 
@@ -181,21 +197,16 @@ confusionMatrix(tab)
 
 
 ###otro arbol
-library(C50)
-library(tidyverse)
-set.seed(102)
+
+set.seed(100)
 dat_Tree_C<- data[,c(1,7:15,17:18,21,24:25,4:6,16,19:20,22,23)]
 for (x in 1:23) {
   dat_Tree_C[,x] <- as.factor(dat_Tree_C[,x])
 }
 
-tr.id<-createDataPartition(dat_Tree_C$X23..resultado,p=0.58,list = F)
+tr.id<-createDataPartition(dat_Tree_C$X23..resultado,p=0.80,list = F)
 Tremod<-C5.0(X23..resultado~.,data = dat_Tree_C[tr.id,])
 
-#print(Tremod)
-#rpart.plot(Tremod,extra = 100)
-#printcp(Tremod)
-#plotcp(Tremod)
 summary(Tremod)
 plot(Tremod)
 
